@@ -2,7 +2,17 @@ import cv2
 import sys
 import numpy as np
 import time
-
+import math
+def gradient(pt1,pt2):
+    return (pt2[1]-pt1[1])/(pt2[0]-pt1[0])
+def getAngle(pointsList,frame):
+    pt1,pt2,pt3 = pointsList
+    m1 = gradient(pt1,pt2)
+    m2 = gradient(pt1,pt3)
+    angR = math.atan((m2-m1)/(1+(m2*m1)))
+    angD = round(math.degrees(angR))
+    cv2.putText(frame,str(angD),(pt1[0]-40,pt1[1]-20),cv2.FONT_HERSHEY_COMPLEX,
+                1.5,(0,0,255),2)
 device=0
 cap = cv2.VideoCapture('HG16MEU.mp4')
 pos_frame = 0
@@ -15,6 +25,8 @@ while not cap.isOpened():
 break_flag=False
 start_flag=True
 previous_frame = None
+ocx = 0
+ocy = 0
 while True:
     t = time.time()
     for i in range(25):
@@ -24,6 +36,7 @@ while True:
             pos_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
             obraz_sz = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             obraz_fil = cv2.GaussianBlur(obraz_sz, (15, 15), 0)
+            black= np.zeros(obraz_fil.shape)
             # obraz_kr = cv2.Canny(obraz_sz, 60, 150)
             circles=cv2.HoughCircles(obraz_fil, cv2.HOUGH_GRADIENT, 1, 20,minRadius=100,maxRadius=700)
             # object_detector = cv2.createBackgroundSubtractorMOG2()
@@ -65,15 +78,38 @@ while True:
                 diff_frame = cv2.dilate(diff_frame, kernel, 1)
 
                     # 5. Only take different areas that are different enough (>20 / 255)
-                thresh_frame = cv2.threshold(src=diff_frame, thresh=20, maxval=255, type=cv2.THRESH_BINARY)[1]
-
-                kierownica= thresh_frame[y1-r1:(y1+2*r1), x1-r1:(x1+2*r1)]
-
+                thresh_frame = cv2.threshold(src=diff_frame, thresh=50, maxval=255, type=cv2.THRESH_BINARY)[1]
+                kierownica=black.astype('uint8')
+                kierownica[y1-r1:(y1+2*r1), x1-r1:(x1+2*r1)]= thresh_frame[y1-r1:(y1+2*r1), x1-r1:(x1+2*r1)]
+                print(kierownica.shape)
 
                 contours, _ = cv2.findContours(image=kierownica, mode=cv2.RETR_EXTERNAL,
                                                    method=cv2.CHAIN_APPROX_SIMPLE)
-                cv2.drawContours(image=frame, contours=contours, contourIdx=-1, color=(0, 255, 0), thickness=2,
-                                         lineType=cv2.LINE_AA)
+                if(contours):
+                    point=contours[0]
+                    for cnt in contours:
+                        # Calculate area and remove small elements                    a
+                        area = cv2.contourArea(cnt)
+                        # x, y, _, _ = cv2.boundingRect(cnt)
+                        # xn, yn, _, _ = cv2.boundingRect(point)
+
+                        if(cv2.contourArea(point)<area):
+                            point=cnt
+                    cv2.drawContours(frame, [point], -1, (0, 255, 0), 2)
+                    M = cv2.moments(point)
+                    cx, cy = int(M['m10'] / M['m00']), int(M['m01'] / M['m00'])
+                    # if best_cnt>1:
+
+                    cv2.line(frame, (ocx, ocy), (cx, cy), (255, 255, 255), 5)
+                    # out = cv2.add(blank, blur)
+                    if(abs(ocx-cx)>50 and abs(ocy-cy)>50):
+                        ocx = cx
+                        ocy = cy
+                    if(ocx!=cx):
+                        getAngle(((cx, cy), (ocx,ocy),(x1,y1)), frame)
+
+                # cv2.drawContours(image=frame, contours=contours, contourIdx=-1, color=(0, 255, 0), thickness=2,
+                #                          lineType=cv2.LINE_AA)
                     ################################-----------------------------------------------------------------------------------------------------------
 
             cv2.imshow("Obraz", frame)
