@@ -2,7 +2,6 @@ import cv2
 import sys
 import numpy as np
 import time
-from tracker import EuclideanDistTracker
 from math import atan2,degrees
 import math
 def create_circular_mask(h, w, center=None, radius=None):

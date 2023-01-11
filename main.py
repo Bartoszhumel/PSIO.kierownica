@@ -3,6 +3,10 @@ import sys
 import numpy as np
 import time
 import math
+
+import skimage
+
+
 def gradient(pt1,pt2):
     return (pt2[1]-pt1[1])/(pt2[0]-pt1[0])
 def getAngle(pointsList,frame):
@@ -13,13 +17,25 @@ def getAngle(pointsList,frame):
     angD = round(math.degrees(angR))
     cv2.putText(frame,str(angD),(pt1[0]-40,pt1[1]-20),cv2.FONT_HERSHEY_COMPLEX,
                 1.5,(0,0,255),2)
+def findclosest(contours,point):
+    xn, yn, _, _ = cv2.boundingRect(point)
+    closest=contours[0]
+    mindist=100000
+    for cnt in contours:
+        # Calculate area and remove small elements                    a
+        x, y, _, _ = cv2.boundingRect(cnt)
+        dist=math.dist((x,y),(xn,yn))
+        if(dist<mindist):
+            mindist=dist
+            closest=cnt
+    return closest
 device=0
-cap = cv2.VideoCapture('HG16MEU.mp4')
+cap = cv2.VideoCapture('short.mp4')
 pos_frame = 0
 cap.set(cv2.CAP_PROP_FRAME_WIDTH,720)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
 while not cap.isOpened():
-    cap = cv2.VideoCapture('HG16MEU.mp4')
+    cap = cv2.VideoCapture('short.mp4')
     cv2.waitKey(2000)
     print ("Czekam na wideo")
 break_flag=False
@@ -78,35 +94,41 @@ while True:
                 diff_frame = cv2.dilate(diff_frame, kernel, 1)
 
                     # 5. Only take different areas that are different enough (>20 / 255)
-                thresh_frame = cv2.threshold(src=diff_frame, thresh=50, maxval=255, type=cv2.THRESH_BINARY)[1]
+                thresh_frame = cv2.threshold(src=diff_frame, thresh=20, maxval=255, type=cv2.THRESH_BINARY)[1]
+
+                # thresh_frame=skimage.morphology.remove_small_objects(thresh_frame,100)
+
                 kierownica=black.astype('uint8')
                 kierownica[y1-r1:(y1+2*r1), x1-r1:(x1+2*r1)]= thresh_frame[y1-r1:(y1+2*r1), x1-r1:(x1+2*r1)]
-                print(kierownica.shape)
 
                 contours, _ = cv2.findContours(image=kierownica, mode=cv2.RETR_EXTERNAL,
                                                    method=cv2.CHAIN_APPROX_SIMPLE)
                 if(contours):
                     point=contours[0]
-                    for cnt in contours:
-                        # Calculate area and remove small elements                    a
-                        area = cv2.contourArea(cnt)
-                        # x, y, _, _ = cv2.boundingRect(cnt)
-                        # xn, yn, _, _ = cv2.boundingRect(point)
-
-                        if(cv2.contourArea(point)<area):
-                            point=cnt
+                    # for cnt in contours:
+                    #     # Calculate area and remove small elements                    a
+                    #     area = cv2.contourArea(cnt)
+                    #     x, y, _, _ = cv2.boundingRect(cnt)
+                    #     xn, yn, _, _ = cv2.boundingRect(point)
+                    #
+                    #     if(cv2.contourArea(point)<area and math.dist((x,y),(xn,yn))<100):
+                    #         point=cnt
+                    #     else:
+                    point=findclosest(contours,point)
                     cv2.drawContours(frame, [point], -1, (0, 255, 0), 2)
-                    M = cv2.moments(point)
-                    cx, cy = int(M['m10'] / M['m00']), int(M['m01'] / M['m00'])
+                    cx, cy, _, _ = cv2.boundingRect(point)
+
                     # if best_cnt>1:
 
-                    cv2.line(frame, (ocx, ocy), (cx, cy), (255, 255, 255), 5)
+                    cv2.line(frame, (x1, y1), (cx, cy), (255, 255, 255), 5)
+                    cv2.line(frame, (ocx, ocy), (cx, cy), (255, 0, 0), 5)
+
                     # out = cv2.add(blank, blur)
-                    if(abs(ocx-cx)>50 and abs(ocy-cy)>50):
-                        ocx = cx
-                        ocy = cy
-                    if(ocx!=cx):
-                        getAngle(((cx, cy), (ocx,ocy),(x1,y1)), frame)
+                    # if(math.dist((ocx,ocy),(cx,cy))>800):
+                    ocx = cx
+                    ocy = cy
+                    if(ocx!=cx and ocy!=cy):
+                        getAngle(((x1,y1),(ocx, ocy),(cx,cy)), frame)
 
                 # cv2.drawContours(image=frame, contours=contours, contourIdx=-1, color=(0, 255, 0), thickness=2,
                 #                          lineType=cv2.LINE_AA)
