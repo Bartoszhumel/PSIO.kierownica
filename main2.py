@@ -27,7 +27,7 @@ def getAngle(pointsList,frame):
     m1 = gradient(pt1,pt2)
     m2 = gradient(pt1,pt3)
     angR = math.atan((m2-m1)/(1+(m2*m1)))
-    angD = round(math.degrees(angR))
+    angD = abs(round(math.degrees(angR)))
     cv2.putText(frame,str(angD),(pt1[0]-40,pt1[1]-20),cv2.FONT_HERSHEY_COMPLEX,
                 1.5,(0,0,255),2)
 def findClosest(array,point):
@@ -41,12 +41,12 @@ def findClosest(array,point):
     print(mindist)
     return result,mindist
 device=0
-cap = cv2.VideoCapture('HG16MEU.mp4')
+cap = cv2.VideoCapture('short.mp4')
 pos_frame = 0
 cap.set(cv2.CAP_PROP_FRAME_WIDTH,720)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
 while not cap.isOpened():
-    cap = cv2.VideoCapture('HG16MEU.mp4')
+    cap = cv2.VideoCapture('short.mp4')
     cv2.waitKey(2000)
     print ("Czekam na wideo")
 
@@ -58,6 +58,7 @@ success, img = cap.read()
 bbox = cv2.selectROI("Tracking",img,False)
 pt2 = [0, 0]
 pt2[0], pt2[1] , stw, sth = bbox
+
 tracker.init(img,bbox)
 while True:
     t = time.time()
@@ -161,6 +162,9 @@ while True:
                 angle = 180 - AngleBtw2Points((bbox[0], bbox[1]), (x1, y1))
                 print("angle:", angle)
                 getAngle(((x1, y1), pt2,(bbox[0],bbox[1])), todisplay)
+                x,y,_,_=bbox
+                cv2.line(todisplay,  (int(x1),int(y1)),(int(x),int(y)), (255, 255, 255), 5)
+
             cv2.imshow("Obraz", todisplay)
             if start_flag:
                 cv2.setWindowProperty('Obraz',cv2.WND_PROP_TOPMOST,1)
@@ -170,7 +174,10 @@ while True:
             # ramka nie jest gotowa
             cap.set(cv2.CAP_PROP_POS_FRAMES, pos_frame-1)
             print ("ramka nie jest gotowa")
-            cv2.waitKey(1000)
+            cv2.destroyAllWindows()
+            cv2.waitKey(1)
+            break_flag = True
+            break
         if cv2.waitKey(10) == 27:
             cv2.destroyAllWindows()
             cv2.waitKey(1)

@@ -22,27 +22,29 @@ def findclosest(contours,point):
     closest=contours[0]
     mindist=100000
     for cnt in contours:
-        # Calculate area and remove small elements                    a
         x, y, _, _ = cv2.boundingRect(cnt)
         dist=math.dist((x,y),(xn,yn))
-        if(dist<mindist):
+        if(dist<mindist and x>xn):
             mindist=dist
             closest=cnt
     return closest
 device=0
-cap = cv2.VideoCapture('short.mp4')
+cap = cv2.VideoCapture('test.mp4')
 pos_frame = 0
 cap.set(cv2.CAP_PROP_FRAME_WIDTH,720)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT,480)
+# cap.set(3, 720)
+# cap.set(4, 1280)
 while not cap.isOpened():
-    cap = cv2.VideoCapture('short.mp4')
+    cap = cv2.VideoCapture('test.mp4')
     cv2.waitKey(2000)
     print ("Czekam na wideo")
 break_flag=False
 start_flag=True
 previous_frame = None
-ocx = 0
-ocy = 0
+ocx=50
+ocy= 50
+flag= 0
 while True:
     t = time.time()
     for i in range(25):
@@ -55,6 +57,8 @@ while True:
             black= np.zeros(obraz_fil.shape)
             # obraz_kr = cv2.Canny(obraz_sz, 60, 150)
             circles=cv2.HoughCircles(obraz_fil, cv2.HOUGH_GRADIENT, 1, 20,minRadius=100,maxRadius=700)
+            # circles=cv2.HoughCircles(obraz_fil, cv2.HOUGH_GRADIENT, 1, 100.0, 30, 150, 100, 140)
+
             # object_detector = cv2.createBackgroundSubtractorMOG2()
             # x= object_detector.apply(frame)
 
@@ -94,9 +98,9 @@ while True:
                 diff_frame = cv2.dilate(diff_frame, kernel, 1)
 
                     # 5. Only take different areas that are different enough (>20 / 255)
-                thresh_frame = cv2.threshold(src=diff_frame, thresh=20, maxval=255, type=cv2.THRESH_BINARY)[1]
+                thresh_frame = cv2.threshold(src=diff_frame, thresh=50, maxval=255, type=cv2.THRESH_BINARY)[1]
 
-                # thresh_frame=skimage.morphology.remove_small_objects(thresh_frame,100)
+                thresh_frame=skimage.morphology.remove_small_objects(thresh_frame,100)
 
                 kierownica=black.astype('uint8')
                 kierownica[y1-r1:(y1+2*r1), x1-r1:(x1+2*r1)]= thresh_frame[y1-r1:(y1+2*r1), x1-r1:(x1+2*r1)]
@@ -121,14 +125,15 @@ while True:
                     # if best_cnt>1:
 
                     cv2.line(frame, (x1, y1), (cx, cy), (255, 255, 255), 5)
-                    cv2.line(frame, (ocx, ocy), (cx, cy), (255, 0, 0), 5)
+                    # cv2.line(frame, (ocx, ocy), (cx, cy), (255, 0, 0), 5)
 
                     # out = cv2.add(blank, blur)
                     # if(math.dist((ocx,ocy),(cx,cy))>800):
-                    ocx = cx
-                    ocy = cy
-                    if(ocx!=cx and ocy!=cy):
-                        getAngle(((x1,y1),(ocx, ocy),(cx,cy)), frame)
+                    #     ocx = x1-r1
+                    #     ocy = y1
+
+                    # if(ocx!=cx and ocy!=cy):
+                    #     getAngle(((x1,y1),(ocx, ocy),(cx,cy)), frame)
 
                 # cv2.drawContours(image=frame, contours=contours, contourIdx=-1, color=(0, 255, 0), thickness=2,
                 #                          lineType=cv2.LINE_AA)
@@ -143,7 +148,10 @@ while True:
             # ramka nie jest gotowa
             cap.set(cv2.CAP_PROP_POS_FRAMES, pos_frame-1)
             print ("ramka nie jest gotowa")
-            cv2.waitKey(1000)
+            cv2.destroyAllWindows()
+            cv2.waitKey(1)
+            break_flag = True
+            break
         if cv2.waitKey(10) == 27:
             cv2.destroyAllWindows()
             cv2.waitKey(1)
